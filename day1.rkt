@@ -1,7 +1,6 @@
 #lang racket
 
 (require "util.rkt")
-(require racket/hash)
 
 ; Part 1 -----------------------------------------------------------
 
