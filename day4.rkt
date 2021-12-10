@@ -64,6 +64,20 @@
         (cons (read-bingo) (read-bingos))
         '())))
 
-(module+ main
+#;(module+ main
   (define sequence (map string->number (string-split (read-line) ",")))
   (display (winning-score sequence (read-bingos))))
+
+; Part 2 -----------------------------------------------------------
+
+; last-score-to-win : [List Number] [List Bingo] -> Number
+; Returns the score of the LAST bingo board to win based on the given seq
+(define (last-score-to-win seq boards)
+  (if (empty? (rest boards)) ; If we have one board, find out when it wins
+      (winning-score seq boards)
+      (let [(marked-boards (map (λ [b] (mark-number b (first seq))) boards))]
+        (last-score-to-win (rest seq) (filter (λ [b] (not (winning-board? b))) marked-boards)))))
+
+(module+ main
+  (define sequence (map string->number (string-split (read-line) ",")))
+  (display (last-score-to-win sequence (read-bingos))))
