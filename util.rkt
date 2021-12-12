@@ -3,7 +3,8 @@
 (provide read-lines
          count-map-add
          get-or-default
-         read-num-grid)
+         read-num-grid
+         multimap/insert)
 
 ; read-lines : [String->X] -> [List X]
 ; Returns a value for each line of input from stdin.
@@ -37,3 +38,9 @@
              ([r (length input)]
               [c (length (list-ref input r))])
     (values (hash-set heatmap (cons r c) (list-ref (list-ref input r) c)))))
+
+; multimap/insert : [HashMap X -> [Set Y]] X Y -> [HashMap X -> [Set Y]]
+(define (multimap/insert map key val)
+  (if (hash-has-key? map key)
+      (hash-set map key (set-add (hash-ref map key) val))
+      (hash-set map key (set val))))
