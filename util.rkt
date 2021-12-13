@@ -11,7 +11,7 @@
 ; By default, returns the lines as strings
 (define (read-lines [f identity])
   (let [(line (read-line))]
-    (if (string? line)
+    (if (and (string? line) (not (string=? line "")))
         (cons (f line) (read-lines f))
         '())))
 
