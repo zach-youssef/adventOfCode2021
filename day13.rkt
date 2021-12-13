@@ -1,6 +1,7 @@
 #lang racket
 
 (require "util.rkt")
+(provide apply-folds read-dotmap read-folds)
 
 ; Part 1 -----------------------------------------------------------
 
