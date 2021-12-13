@@ -46,9 +46,9 @@
 
 ; display-dots [Set (Number, Number)] -> Void
 (define (display-dots dots)
-  (for  [(x (add1 (apply max (set-map dots car))))]
-    (for [(y (add1 (apply max (set-map dots cdr))))]
-      (display (if (set-member? dots (cons x y)) "#" ".")))
+  (for [(y (add1 (apply max (set-map dots cdr))))]
+    (for [(x (add1 (apply max (set-map dots car))))]
+      (display (if (set-member? dots (cons x y)) "█" " ")))
     (display "\n")))
 
 (module+ main
