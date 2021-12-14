@@ -4,7 +4,8 @@
          count-map-add
          get-or-default
          read-num-grid
-         multimap/insert)
+         multimap/insert
+         list->count-map)
 
 ; read-lines : [String->X] -> [List X]
 ; Returns a value for each line of input from stdin.
@@ -44,3 +45,9 @@
   (if (hash-has-key? map key)
       (hash-set map key (set-add (hash-ref map key) val))
       (hash-set map key (set val))))
+
+; list->count-map : [List X] ->  [HashMap  X->Number]
+(define (list->count-map lox)
+  (for/fold [(map (hash))]
+            [(e lox)]
+    (count-map-add map e)))
