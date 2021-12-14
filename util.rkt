@@ -16,12 +16,12 @@
         (cons (f line) (read-lines f))
         '())))
 
-; count-map-add : [HashMap X -> Nat] X -> [HashMap X -> Nat]
+; count-map-add : [HashMap X -> Nat] X Nat?-> [HashMap X -> Nat]
 ; Increments the value at X, or sets it to 1 if not presence
-(define (count-map-add map key)
+(define (count-map-add map key [amount 1])
   (if (hash-has-key? map key)
-      (hash-set map key (add1 (hash-ref map key)))
-      (hash-set map key 1)))
+      (hash-set map key (+ amount (hash-ref map key)))
+      (hash-set map key amount)))
 
 ; get-or-default : [HashMap X->Y] X Y -> Y
 (define (get-or-default map key default)
