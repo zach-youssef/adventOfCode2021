@@ -2,6 +2,8 @@
 
 (require "util.rkt")
 
+(provide binary->decimal)
+
 ; Part 1 -----------------------------------------------------------
 
 ; parse-binary : String -> [List Boolean]
