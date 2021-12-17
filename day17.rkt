@@ -13,28 +13,6 @@
           (acc cur (sub1 v)))))
   (acc 0 v))
 
-(define (all-heights v t)
-  (for/fold ([path '(0)]
-             [pos 0]
-             [v v]
-             #:result (reverse path))
-            ([i t])
-    (let ([new-pos (+ pos v)])
-      (values (cons new-pos path)
-              new-pos
-              (sub1 v)))))
-
-(define (all-horiz v t)
-  (for/fold ([path '(0)]
-             [pos 0]
-             [v v]
-             #:result (reverse path))
-            ([i t])
-    (let ([new-pos (+ pos v)])
-      (values (cons new-pos path)
-              new-pos
-              (if (zero? v) v (sub1 v))))))
-
 ; We know y-velocity can't go higher when :
 ; step n height > target max
 ; and step n+1 height < target min (we passed the area, too fast)
@@ -55,7 +33,6 @@
                       ", y=" "..") "..")))
 
 
-; Ugly brute force because I don't get why my thing doesnt work
 (define (best-height xmin xmax ymin ymax)
   (for/fold ([best-height 0]
               [best-v 0])
@@ -66,5 +43,33 @@
           (values height v)
           (values best-height best-v)))))        
 
-(module+ main
+#;(module+ main
   (apply best-height (read-target-area)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (hits-target-2? vx vy xmin xmax ymin ymax)
+  (define (acc last-x last-y vx vy)
+    (let ([x (+ last-x vx)]
+          [y (+ last-y vy)])
+      (cond
+        [(and (>= x xmin)
+              (<= x xmax)
+              (>= y ymin)
+              (<= y ymax)) #t] ; we hit the target
+        [(or (and (= vx 0)
+                  (or (< x xmin)
+                      (> x xmax)))
+             (< y ymin)) #f] ; we won't hit the target
+        [else (acc x y (if (zero? vx) 0 (sub1 vx)) (sub1 vy))]))) ; we might hit the target
+  (acc 0 0 vx vy))
+
+(define (count-hit-target xmin xmax ymin ymax)
+  (for*/fold ([valid 0])
+             ([vx (add1 xmax)]
+              [vy (range (sub1 ymin) 101)]) ; using 101 since we know 100 is the highest that actually hits the target
+    (if (hits-target-2? vx vy xmin xmax ymin ymax)
+        (add1 valid)
+        valid)))
+
+(module+ main
+  (apply count-hit-target (read-target-area)))
