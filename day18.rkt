@@ -4,10 +4,6 @@
 ; Number
 ; (list SNF SNF)
 
-; add : SNF SNF -> SNF
-(define (add snf1 snf2)
-  (list snf1 snf2))
-
 ; A PathStep is one of
 ; 'L
 ; 'R
@@ -18,6 +14,31 @@
 ; (s [List PathStep Number Number])
 ; (e [List PathStep])
 ; #f
+
+
+; sum-stdin : -> SNF
+; Reads SnailFishNumbers from stdin and sums them together, reducing along the way
+(define (sum-stdin)
+  (define (loop snf)
+    (let ([next (read)])
+      (if (eof-object? next)
+          snf
+          (loop (reduce (add snf next))))))
+  (loop (read)))
+
+; add : SNF SNF -> SNF
+(define (add snf1 snf2)
+  (list snf1 snf2))
+
+; magnitude : SNF -> Number
+(define (magnitude snf)
+  (match snf
+    [(list left right) (+ (* 3 (magnitude left))
+                          (* 2 (magnitude right)))]
+    [n n]))
+
+(module+ main
+  (display (magnitude (sum-stdin))))
 
 ; reduce : SNF -> SNF
 (define (reduce snf)
@@ -87,22 +108,10 @@
   (cond
     [(empty? path) #f]
     [(cons? path) (if (symbol=? (first path) dir)
-                      (loop (rest path) dir)
+                      (loop (rest path))
                       (rest path))]))
   (let ([result (loop (reverse path))])
     (and result (reverse result))))
-
-         
-#;(define (path-to-adj-parent path dir)
-  (define (loop path)
-    (cond [(empty? path) #f]
-          [(symbol=? (first path) dir) (loop (rest path))]
-          [else path]))
-  (let ([result (loop (rest (reverse path)))])
-    (cond
-      [(and result (symbol=? (last path) dir) (reverse (rest result)))]
-      [result (reverse result)]
-      [else #f])))
 
 ; opposite : PathStep -> PathStep
 (define (opposite dir)
@@ -130,17 +139,3 @@
     (cond [(number? snf) '()]
           [(list? snf) (cons dir (loop ((path-step->op dir) snf)))]))
   (append path (loop (apply-path snf path))))
-
-
-;;;;;;;;; DEBUG ONLY METHODS
-; force-explode : SNF -> SNF
-(define (force-explode snf)
-  (apply-explosion snf (needs-reduction? snf)))
-; force-split : SNF->SNF
-(define (force-split snf)
-  (apply-split snf (needs-reduction? snf)))
-
-;TODO TOMORROW:
-; EXPECTED : '((((0 7) 4) (7 ((8 4) 9))) (1 1)) -> [[[[0,7],4],[15,[0,13]]],[1,1]]
-; ACTUAL: '((((0 7) 4) (19 (0 9))) (1 1))
-; Looks like its finding 19's position (the original 7) as both the left and right adjacent
