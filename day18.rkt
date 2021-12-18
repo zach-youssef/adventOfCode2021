@@ -65,8 +65,8 @@
 ; apply-explosion : SNF E -> SNF                    
 ; 3 steps:
 ; - Replace value at path with 0
-; - Add left to leftmost value, if it exists
-; - Add right to rightmost value, if it exists
+; - Add left to adjacent left value, if it exists
+; - Add right to adjacent right value, if it exists
 (define (apply-explosion snf e)
   (let* ([path (e-path e)]
          [zeroed (modify-at-path snf path (λ [_] 0))]
