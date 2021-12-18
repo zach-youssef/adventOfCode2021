@@ -1,0 +1,112 @@
+#lang racket
+
+; A SnailFishNumber (SNF) is one of
+; Number
+; (list SNF SNF)
+
+; add : SNF SNF -> SNF
+(define (add snf1 snf2)
+  (list snf1 snf2))
+
+; A PathStep is one of
+; 'L
+; 'R
+
+(struct e [path left right] #:transparent)
+(struct s [path val] #:transparent)
+; A ReductionStep is one of
+; (s [List PathStep Number Number])
+; (e [List PathStep])
+; #f
+
+; needs-reduction? : SNF -> ReductionStep
+(define (needs-reduction? snf)
+  (define (acc snf depth path)
+    (cond
+      [(and (list? snf) (= depth 4)) (e (reverse path) (car snf) (cadr snf))]
+      [(list? snf) (let ([left (acc (car snf) (add1 depth) (cons 'L path))])
+                     (if (e? left) left
+                         (let ([right (acc (cadr  snf) (add1 depth) (cons 'R path))])
+                           (if (e? right) right
+                               (or left right)))))]
+      [(and (number? snf) (>= snf 10)) (s (reverse path) snf)]
+      [(number? snf) #f]))
+  (acc snf 0 '()))
+
+; apply-explosion : SNF E -> SNF                    
+; 3 steps:
+; - Replace value at path with 0
+; - Add left to leftmost value, if it exists
+; - Add right to rightmost value, if it exists
+(define (apply-explosion snf e)
+  (let* ([path (e-path e)]
+         [zeroed (modify-at-path snf path (λ [_] 0))]
+         [left-path (path-to-adj zeroed path 'L)]
+         [lefted (if left-path
+                     (modify-at-path zeroed left-path (λ [n] (+ n (e-left e))))
+                     zeroed)]
+         [right-path (path-to-adj lefted path 'R)])
+    (if right-path
+        (modify-at-path lefted right-path (λ [n] (+ n (e-right e))))
+        lefted)))
+
+
+
+; modify-at-path : SNF [List PathStep] [SNF -> SNF] -> SNF?
+; Applies the given function to the SNF at the given path
+; Returns false if the path is not valid
+(define (modify-at-path snf path f)
+  (cond
+    [(and (number? snf) (cons? path)) #f]
+    [(empty? path) (f snf)]
+    [(and (list? snf)(list? path)) (match (first path)
+                                     ['L (list (modify-at-path (car snf) (rest path) f) (cadr snf))]
+                                     ['R (list (car snf) (modify-at-path (cadr snf) (rest path) f))])]))
+
+; path-to-adj : SNF [List PathStep] PathStep -> [List PathStep]?
+(define (path-to-adj snf path dir)
+  (let ([path-start (path-to-adj-parent path dir)])
+    (and path-start
+         (proceed-to-terminal snf (append path-start (list dir)) (opposite dir)))))
+
+; path-to-adj-parent : [List PathStep] PathStep -> [List PathStep]
+; do: drop last from end of path until: end of path != dir (always remove at least once)
+; Or return false if empty is reached
+; Returns the first parent node that the original path and the adjacent node both share
+(define (path-to-adj-parent path dir)
+  (define (loop path)
+    (cond [(empty? path) #f]
+          [(symbol=? (first path) dir) (loop (rest path))]
+          [else path]))
+  (let ([result (loop (rest (reverse path)))])
+    (cond
+      [(and result (symbol=? (last path) dir) (reverse (rest result)))]
+      [result (reverse result)]
+      [else #f])))
+
+; opposite : PathStep -> PathStep
+(define (opposite dir)
+  (match dir
+    ['L 'R]
+    ['R 'L]))
+
+; path-step->op : PathStep -> [SNF -> SNF]
+(define (path-step->op dir)
+  (match dir
+    ['L car]
+    ['R cadr]))
+
+; apply-path : SNF [List PathStep] -> SNF?
+(define (apply-path snf path)
+  (cond
+    [(empty? path) snf]
+    [(and (cons? path) (number? snf)) #f]
+    [(and (cons? path) (list? snf)) (apply-path ((path-step->op (first path)) snf) (rest path))]))
+
+; proceed-to-terminal : SNF [List PathStep] PathStep -> [List PathStep]
+; Add dir to path until a number/terminal is reached
+(define (proceed-to-terminal snf path dir)
+  (define (loop snf)
+    (cond [(number? snf) '()]
+          [(list? snf) (cons dir (loop ((path-step->op dir) snf)))]))
+  (append path (loop (apply-path snf path))))
