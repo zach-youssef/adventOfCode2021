@@ -37,7 +37,7 @@
                           (* 2 (magnitude right)))]
     [n n]))
 
-(module+ main
+#;(module+ main
   (display (magnitude (sum-stdin))))
 
 ; reduce : SNF -> SNF
@@ -139,3 +139,26 @@
     (cond [(number? snf) '()]
           [(list? snf) (cons dir (loop ((path-step->op dir) snf)))]))
   (append path (loop (apply-path snf path))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; read-all-snf : -> [List SNF]
+(define (read-all-snf)
+  (let ([snf (read)])
+    (if (eof-object? snf)
+        '()
+        (cons snf (read-all-snf)))))
+
+; largest-sum : [List SNF] -> Nat
+(define (largest-sum snfs)
+  (for*/fold ([best -inf.0])
+             ([a snfs]
+              [b snfs])
+    (if (equal? a b)
+        best
+        (max (magnitude (reduce (add a b)))
+             best))))
+
+(module+ main
+  (largest-sum (read-all-snf)))
