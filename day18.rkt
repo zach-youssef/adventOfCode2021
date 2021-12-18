@@ -80,11 +80,20 @@
     (and path-start
          (proceed-to-terminal snf (append path-start (list dir)) (opposite dir)))))
 
-; path-to-adj-parent : [List PathStep] PathStep -> [List PathStep]
-; do: drop last from end of path until: end of path != dir (always remove at least once)
-; Or return false if empty is reached
-; Returns the first parent node that the original path and the adjacent node both share
+; path-to-adj-parent : [List PathStep] PathStep -> [List PathStep]?
+; Returns the first parent node that the original path shares with a number to its left (if it exists)
 (define (path-to-adj-parent path dir)
+  (define (loop path)
+  (cond
+    [(empty? path) #f]
+    [(cons? path) (if (symbol=? (first path) dir)
+                      (loop (rest path) dir)
+                      (rest path))]))
+  (let ([result (loop (reverse path))])
+    (and result (reverse result))))
+
+         
+#;(define (path-to-adj-parent path dir)
   (define (loop path)
     (cond [(empty? path) #f]
           [(symbol=? (first path) dir) (loop (rest path))]
