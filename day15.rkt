@@ -6,7 +6,7 @@
 (require racket/hash)
 
 ; astar : (Nat Nat) [List (Nat Nat)] [HashMap (Nat Nat) -> Nat] [Set (Nat Nat)] [Heap (list (Nat, Nat) Nat [List (Nat, Nat)])] -> [List (Nat, Nat)]
-(define (astar cur path risk seen queue goal)
+#;(define (astar cur path risk seen queue goal)
   (cond
     [(and (= (car goal) (car cur))
           (= (cdr goal) (cdr cur))) (cons goal path)]
@@ -60,7 +60,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define (increase-scan grid)
+; Bad : too big
+#;(define (increase-scan grid)
   (let ([rows (add1 (apply max (map car (hash-keys grid))))]
         [cols (add1 (apply max (map cdr (hash-keys grid))))])
   (for*/fold ([new-grid (hash)])
@@ -73,9 +74,53 @@
                                          ((λ [n] (if (= 0 n) 9 n))
                                           (modulo (+ r c risk) 9)))))))))
 
+(define (get-risk risk goal)
+  (λ [pos]
+    ((λ [n] (if (= 0 n) 9 n))
+     (modulo
+      (+ (hash-ref risk (cons (modulo (car pos) (/ (add1 (car goal)) 5))
+                              (modulo (cdr pos) (/ (add1 (cdr goal)) 5))))
+         (floor (/ (car pos) (/ (add1 (car goal)) 5)))
+         (floor (/ (cdr pos) (/ (add1 (cdr goal)) 5))))
+      9))))
+
+(define (calc-goal risk)
+  (let ([f (λ [a] (sub1 (* 5 (add1 (apply max (map a (hash-keys risk)))))))])
+  (cons (f car)
+        (f cdr))))
+
+(define (dist a b)
+  (+ (abs (- (car b) (car a)))
+     (abs (- (cdr b) (cdr a)))))
+
+(define (print-heap heap)
+  (begin
+    (for ([x (in-heap heap)])
+      (begin
+        (display x)
+        (display " ")))
+    (displayln "")))
+
+(define (astar pos cost queue seen goal h)
+  (cond
+    #;[(and (print-heap queue) #f) #f]
+    [(and (= (car pos) (car goal))
+          (= (cdr pos) (cdr goal)))  cost]
+    [(set-member? seen pos) (let* ([next (heap-min queue)]
+                                   [update (heap-remove-min! queue)])
+                              (astar (car next) (cadr next) queue seen goal h))]
+    [else (let* ([loop (for ([next (filter (λ [s] (not (set-member? seen s))) (succ pos goal))])
+                         (heap-add! queue (list next (+ (h next) cost) (dist next goal))))]
+                 [next (heap-min queue)]
+                 [update (heap-remove-min! queue)])
+            (astar (car next) (cadr next) queue (set-add seen pos) goal h))]))
+
 (module+ main
-  (let* [(grid (increase-scan (read-num-grid)))
-         (p (path grid))]
-    (display (score-path p grid))
-    (display "\n")
-    #;(print-path grid p)))
+  (let* ([risk (read-num-grid)]
+         [goal (calc-goal risk)]
+         [h (get-risk risk goal)])
+    (astar (cons 0 0) 0
+           (make-heap (λ [a b] (if (= (cadr a) (cadr b))
+                                   (< (caddr a) (caddr b))
+                                   (< (cadr a) (cadr b)))))
+           (set) goal h)))
