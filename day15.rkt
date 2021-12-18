@@ -4,7 +4,8 @@
 
 (require data/heap)
 
-; Returns the adjacent points in the grid
+; succ : (Nat Nat) (Nat Nat) -> [List (Nat Nat)]
+; Returns the adjacent points in the grid (succesors in the graph)
 (define (succ state goal)
   (filter (λ [state] (and (<= (car state) (car goal))
                           (<= (cdr state) (cdr goal))
@@ -26,6 +27,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+; get-risk : [HashMap (Nat, Nat) -> Number] (Nat, Nat) -> [(Nat, Nat) -> Number]
 ; Returns a function that calculates the risk at a point
 ; Based on the input risk grid and the dimensions of the total cave system
 ; (encapsualted in the goal coordinates)
@@ -39,8 +41,8 @@
          (floor (/ (cdr pos) (/ (add1 (cdr goal)) 5))))
       9))))
 
-; Returns the coordinate of the bottom right corner of the cave system,
-; given the input
+; calc-goal : [HashMap (Nat, Nat) -> Number]
+; Determines the coordinate of the bottom right corner of the expanded cave system
 (define (calc-goal risk)
   (let ([f (λ [a] (sub1 (* 5 (add1 (apply max (map a (hash-keys risk)))))))])
   (cons (f car)
@@ -52,6 +54,8 @@
   (+ (abs (- (car b) (car a)))
      (abs (- (cdr b) (cdr a)))))
 
+; astar : (Nat Nat) Nat [Heap (list (Nat, Nat) Nat Nat)] [Set (Nat Nat)] (Nat Nat) [(Nat Nat) -> Nat] -> Nat
+; Returns the total risk of the safest path to the goal from the given position
 (define (astar pos cost queue seen goal h)
   (cond
     [(and (= (car pos) (car goal))
