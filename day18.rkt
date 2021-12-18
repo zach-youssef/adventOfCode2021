@@ -13,11 +13,19 @@
 ; 'R
 
 (struct e [path left right] #:transparent)
-(struct s [path val] #:transparent)
+(struct s [path] #:transparent)
 ; A ReductionStep is one of
 ; (s [List PathStep Number Number])
 ; (e [List PathStep])
 ; #f
+
+; reduce : SNF -> SNF
+(define (reduce snf)
+  (let ([step (needs-reduction? snf)])
+    (cond
+      [(e? step) (reduce (apply-explosion snf step))]
+      [(s? step) (reduce (apply-split snf step))]
+      [else snf])))
 
 ; needs-reduction? : SNF -> ReductionStep
 (define (needs-reduction? snf)
@@ -29,7 +37,7 @@
                          (let ([right (acc (cadr  snf) (add1 depth) (cons 'R path))])
                            (if (e? right) right
                                (or left right)))))]
-      [(and (number? snf) (>= snf 10)) (s (reverse path) snf)]
+      [(and (number? snf) (>= snf 10)) (s (reverse path))]
       [(number? snf) #f]))
   (acc snf 0 '()))
 
@@ -45,12 +53,15 @@
          [lefted (if left-path
                      (modify-at-path zeroed left-path (λ [n] (+ n (e-left e))))
                      zeroed)]
-         [right-path (path-to-adj lefted path 'R)])
+         [right-path (path-to-adj zeroed path 'R)])
     (if right-path
         (modify-at-path lefted right-path (λ [n] (+ n (e-right e))))
         lefted)))
 
-
+; apply-split : SNF S -> SNF
+(define (apply-split snf s)
+  (modify-at-path snf (s-path s) (λ [n] (list (exact-floor (/ n 2))
+                                              (exact-ceiling (/ n 2))))))
 
 ; modify-at-path : SNF [List PathStep] [SNF -> SNF] -> SNF?
 ; Applies the given function to the SNF at the given path
@@ -110,3 +121,17 @@
     (cond [(number? snf) '()]
           [(list? snf) (cons dir (loop ((path-step->op dir) snf)))]))
   (append path (loop (apply-path snf path))))
+
+
+;;;;;;;;; DEBUG ONLY METHODS
+; force-explode : SNF -> SNF
+(define (force-explode snf)
+  (apply-explosion snf (needs-reduction? snf)))
+; force-split : SNF->SNF
+(define (force-split snf)
+  (apply-split snf (needs-reduction? snf)))
+
+;TODO TOMORROW:
+; EXPECTED : '((((0 7) 4) (7 ((8 4) 9))) (1 1)) -> [[[[0,7],4],[15,[0,13]]],[1,1]]
+; ACTUAL: '((((0 7) 4) (19 (0 9))) (1 1))
+; Looks like its finding 19's position (the original 7) as both the left and right adjacent
