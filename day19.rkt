@@ -2,6 +2,7 @@
 
 (require "util.rkt")
 (require math/matrix)
+(require math/array)
 
 ; Sample math from given input
 
@@ -22,48 +23,115 @@
 ; Use T move all the points in S1 to S0
 ; Repeat
 
+; Or - lmao
+; Apply rotations and translations like before cause fuck dis shit
+(define all-rotations (list (matrix [[1 0 0] [0 1 0] [0 0 1]])
+                            (matrix [[-1 0 0] [0 -1 0] [0 0 1]])
+                            (matrix [[-1 0 0] [0 1 0] [0 0 -1]])
+                            (matrix [[1 0 0] [0 -1 0]  [0 0 -1]])
+                            
+                            (matrix [[-1 0 0] [0 0 1] [0 1 0]])
+                            (matrix [[1 0 0] [0 0 -1] [0 1 0]])
+                            (matrix [[1 0 0] [0 0 1] [0 -1 0]])
+                            (matrix [[-1 0 0] [0 0 -1] [0 -1 0]])
+                            
+                            (matrix [[0 -1 0] [1 0 0] [ 0 0 1]])
+                            (matrix [[ 0 1 0] [-1 0 0] [ 0 0 1]])
+                            (matrix [[0 1 0] [1 0 0] [0 0 -1]])
+                            (matrix [[0 -1 0] [-1 0 0] [0 0 -1]])
+                            
+                            (matrix [[0 1 0] [0 0 1] [1 0 0]])
+                            (matrix [[0 -1 0] [0 0 -1] [1 0 0]])
+                            (matrix [[0 -1 0] [0 0 1] [-1 0 0]])
+                            (matrix [[0 1 0] [0 0 -1] [-1 0 0]])
 
+                            (matrix [[0 0 1] [1 0 0] [0 1 0]])
+                            (matrix [[0 0 -1] [-1 0 0] [0 1 0]])
+                            (matrix [[0 0 -1] [1 0 0] [0 -1 0]])
+                            (matrix [[0 0 1] [-1 0 0] [0 -1 0]])
+                            
+                            (matrix [[0 0 -1] [0 1 0] [1 0 0]])
+                            (matrix [[0 0 1] [0 -1 0] [1 0 0]])
+                            (matrix [[0 0 1] [0 1 0] [-1 0 0]])
+                            (matrix [[0 0 -1] [0 -1 0] [-1 0 0]])))
 
-; find-relative-distances : [List (list x y z)] -> [HashMap  ((list x y z), (list x y z)) -> d]
-(define (find-relative-distances lop)
-  (for*/fold ([distances (hash)])
-             ([from lop]
-              [to (member from lop)])
-    (if (equal? from to)
-        distances
-        (hash-set distances (set from to) (distance from to)))))
+(struct dataset [beacons scanners] #:transparent)
 
-(define (distance from to)
-  (sqrt (foldr + 0 (map sqr (map - from to))))) ; remove sqrt if equality issues arise
+; merge-dataset : Dataset Dataset -> Dataset?
+(define (merge-dataset d1 d2)
+  (for/or ([rot all-rotations])
+    (let* ([rotate (λ [v] (matrix* rot v))]
+           [b2 (set-map (dataset-beacons d2) rotate)]
+           [distance-map (for*/fold ([map (hash)])
+                                    ([a (dataset-beacons d1)]
+                                     [b b2])
+                           (count-map-add map (distance a b)))]
+           [best-count (apply max (hash-values distance-map))])
+      (if (>= best-count 12)
+          (let ([best-displacement (findf (λ [k] (= (hash-ref distance-map k) best-count)) (hash-keys distance-map))])
+            (dataset (set-union (dataset-beacons d1)
+                                (list->set (map (λ [v] (matrix+ best-displacement v)) b2)))
+                     (set-union (dataset-scanners d1)
+                                (list->set (set-map (dataset-scanners d2)
+                                                    (λ [v] (matrix+ (matrix* rot v) best-displacement)))))))
+          #f))))
 
-; matching-points : [List (list x y z)] [List (list x y z)]  -> [List (list (list x y z) (list x y z))]?
-(define (matching-points l1 l2)
-  #;(define l1-dist (find-relative-distances l1))
-  #;(define l2-dist (find-relative-distances l2))
-  ; acc :  [HashMap (list x y z) -> (list x y z)] [Set (list (list x y z) (list x y z))] ->  [HashMap (list x y z) -> (list x y z)]?
-  (define (acc mapping unused)
-    (if (= 0 (set-count unused)) mapping
-        (for/or ([pair unused])
-          (let ([new-mapping (hash-set mapping (first pair) (second pair))])
-            (if (valid? new-mapping)
-                (acc new-mapping (set-remove unused pair))
-                #f)))))
-  (acc (hash) (list->set (all-pairs l1 l2))))
+; merge-datasets : [List Dataset] -> Dataset
+(define (merge-datasets datasets)
+  (define (acc s0 datasets)
+    (if (empty? datasets) s0
+        (let ([merge-result (merge-dataset s0 (first datasets))])
+          (if merge-result
+              (acc merge-result (rest datasets))
+              (acc s0 (append (rest datasets) (list (first datasets))))))))
+  (acc (first datasets) (rest datasets)))
 
-; valid?  : [HashMap (list x y z) -> (list x y z)] [HashMap  ((list x y z), (list x y z)) -> d] ^2 -> Boolean
-(define (valid? mapping)
-  (and (let* ([values (hash-values mapping)]
-              [value-set (list->set values)])
-         (= (length values) (set-count value-set))) ; Mapping is bijective
-       (= (apply + (hash-values (find-relative-distances (hash-keys mapping))))
-          (apply + (hash-values (find-relative-distances (hash-values mapping)))))))
+; Distance : 3x1Matrix 3x1Matrix -> 3x1Matrix
+(define (distance v1 v2)
+  (matrix- v1 v2))
+                             
+; read-datasets : -> [List Dataset]
+(define (read-datasets)
+  (let ([next (read-dataset)])
+    (if (= 0 (set-count (dataset-beacons next)))
+        '()
+        (cons next (read-datasets)))))
 
-; all-pairs [List X] [List Y] -> [List (list X Y)]
-(define (all-pairs lox loy)
-  (for*/list ([x lox]
-              [y loy])
-    (list x y)))
+; read-dataset : -> Dataset
+(define (read-dataset)
+  (let ([line (read-line)])
+    (dataset (list->set (parse-lop))
+             (set (col-matrix [0 0 0])))))
 
-; parse-lop : -> [List (list X Y Z)]
+; parse-lop : -> [List 3x1Matrix]
 (define (parse-lop)
-  (read-lines (λ [line] (map string->number (string-split line ",")))))
+  (read-lines string->vec))
+
+; string->vec : String -> 3x1Matrix
+(define (string->vec line)
+  (let ([vals (map string->number (string-split line ","))])
+    (col-matrix [(first vals) (second vals) (third vals)])))
+
+#;(module+ main
+  (display (set-count (dataset-beacons (merge-datasets (read-datasets))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; largest-manhattan : [List 3x1Matrix] -> Nat
+(define (largest-manhattan points)
+  (for*/fold ([lm -inf.0])
+             ([a points]
+              [b points])
+      (max (manhattan a b) lm)))
+
+; manhattan : 3x1Mat 3x1Mat -> Nat
+(define (manhattan a b)
+  (apply + (array->list (matrix-map abs (matrix- a b)))))
+
+(module+ main
+  (let ([merged-data (merge-datasets (read-datasets))])
+    (begin
+      (display "Beacons: ")
+      (displayln (set-count (dataset-beacons merged-data)))
+      (display "ScannerDist: ")
+      (displayln (largest-manhattan (set->list (dataset-scanners merged-data)))))))
