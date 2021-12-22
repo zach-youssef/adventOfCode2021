@@ -4,6 +4,7 @@
          count-map-add
          get-or-default
          read-num-grid
+         parse-grid
          multimap/insert
          list->count-map)
 
@@ -31,10 +32,10 @@
 
 ; read-num-grid : -> [HashMap (Nat, Nat) -> Number]
 (define (read-num-grid)
-  (parse-heatmap (read-lines (λ [line] (map string->number (map string (string->list line)))))))
+  (parse-grid (read-lines (λ [line] (map string->number (map string (string->list line)))))))
 
-; parse-heatmap : [List [List Number]] -> [HashMap (Nat, Nat) -> Number]
-(define (parse-heatmap input)
+; parse-grid : [List [List X]] -> [HashMap (Nat, Nat) -> X]
+(define (parse-grid input)
   (for*/fold ([heatmap (hash)])
              ([r (length input)]
               [c (length (list-ref input r))])
